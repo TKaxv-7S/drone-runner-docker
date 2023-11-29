@@ -1,7 +1,11 @@
 FROM alpine:3 as alpine
+
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/' /etc/apk/repositories && \
+    echo "Asia/Shanghai" > /etc/timezone
+
 RUN apk add -U --no-cache ca-certificates
 
-RUN wget https://github.com/tmate-io/tmate/releases/download/2.4.0/tmate-2.4.0-static-linux-amd64.tar.xz
+COPY docker/tmate-2.4.0-static-linux-amd64.tar.xz .
 RUN tar -xf tmate-2.4.0-static-linux-amd64.tar.xz
 RUN mv tmate-2.4.0-static-linux-amd64/tmate /bin/
 RUN chmod +x /bin/tmate

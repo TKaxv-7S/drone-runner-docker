@@ -1,9 +1,6 @@
 kind: pipeline
-type: vm
+type: docker
 name: testing
-
-pool:
-  use: ubuntu
 
 platform:
   os: linux
@@ -13,6 +10,8 @@ steps:
   - name: test
     image: golang:1.16
     commands:
+      - go env -w GO111MODULE=on
+      - go env -w GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
       - go test -cover ./...
     volumes:
       - name: go
@@ -28,18 +27,21 @@ steps:
 
 volumes:
   - name: go
-    temp: {}
+    temp: { }
 
 ---
-
 kind: pipeline
-type: vm
+type: docker
 name: linux-amd64
+
+volumes:
+  - name: cache
+    host:
+      path: /home/root/drone-runner/cache/go/pkg
+
 platform:
   os: linux
   arch: amd64
-pool:
-  use: ubuntu
 
 steps:
   - name: environment
@@ -55,12 +57,17 @@ steps:
     environment:
       CGO_ENABLED: "0"
     commands:
+      - go env -w GO111MODULE=on
+      - go env -w GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
       - go build -o release/linux/amd64/drone-runner-docker
+    volumes:
+      - name: cache
+        path: /go/pkg
   - name: publish
     image: plugins/docker
     pull: if-not-exists
     settings:
-      repo: drone/drone-runner-docker
+      repo: tkaxv7s/drone-runner-docker
       auto_tag: true
       auto_tag_suffix: linux-amd64
       dockerfile: docker/Dockerfile.linux.amd64
@@ -83,16 +90,18 @@ trigger:
     - refs/pull/**
 
 ---
-
-
 kind: pipeline
-type: vm
+type: docker
 name: linux-arm64
+
+volumes:
+  - name: cache
+    host:
+      path: /home/root/drone-runner/cache/go/pkg
+
 platform:
   os: linux
   arch: arm64
-pool:
-  use: ubuntu_arm64
 
 steps:
   - name: environment
@@ -108,12 +117,17 @@ steps:
     environment:
       CGO_ENABLED: "0"
     commands:
+      - go env -w GO111MODULE=on
+      - go env -w GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
       - go build -o release/linux/arm64/drone-runner-docker
+    volumes:
+      - name: cache
+        path: /go/pkg
   - name: publish
     image: plugins/docker
     pull: if-not-exists
     settings:
-      repo: drone/drone-runner-docker
+      repo: tkaxv7s/drone-runner-docker
       auto_tag: true
       auto_tag_suffix: linux-arm64
       dockerfile: docker/Dockerfile.linux.arm64
@@ -137,15 +151,13 @@ trigger:
 
 ---
 kind: pipeline
-type: vm
+type: docker
 name: windows-1809
 
 platform:
   os: windows
   arch: amd64
-
-pool:
-  use: windows
+  version: 1809
 
 steps:
   - name: environment
@@ -161,12 +173,14 @@ steps:
     environment:
       CGO_ENABLED: "0"
     commands:
+      - go env -w GO111MODULE=on
+      - go env -w GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
       - go build -o release/windows/amd64/drone-runner-docker.exe
   - name: docker
     image: plugins/docker
     settings:
       dockerfile: docker/Dockerfile.windows.1809
-      repo: drone/drone-runner-docker
+      repo: tkaxv7s/drone-runner-docker
       username:
         from_secret: docker_username
       password:
@@ -191,15 +205,13 @@ trigger:
 
 ---
 kind: pipeline
-type: vm
+type: docker
 name: windows-ltsc2022
 
 platform:
   os: windows
   arch: amd64
-
-pool:
-  use: windows-2022
+  version: 2022
 
 steps:
   - name: environment
@@ -215,12 +227,14 @@ steps:
     environment:
       CGO_ENABLED: "0"
     commands:
+      - go env -w GO111MODULE=on
+      - go env -w GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
       - go build -o release/windows/amd64/drone-runner-docker.exe
   - name: docker
     image: plugins/docker
     settings:
       dockerfile: docker/Dockerfile.windows.ltsc2022
-      repo: drone/drone-runner-docker
+      repo: tkaxv7s/drone-runner-docker
       username:
         from_secret: docker_username
       password:
@@ -236,38 +250,37 @@ steps:
 
 depends_on:
   - testing
-  
+
 trigger:
   ref:
     - refs/heads/master
     - refs/tags/**
     - refs/pull/**
 
----
-
-kind: pipeline
-type: docker
-name: manifest
-
-steps:
-  - name: manifest
-    image: plugins/manifest
-    settings:
-      spec: docker/manifest.tmpl
-      auto_tag: true
-      ignore_missing: true
-      password:
-        from_secret: docker_password
-      username:
-        from_secret: docker_username
-
-depends_on:
-  - linux-amd64
-  - linux-arm64
-  - windows-1809
-  - windows-ltsc2022
-
-trigger:
-  ref:
-    - refs/heads/master
-    - refs/tags/*
+#---
+#kind: pipeline
+#type: docker
+#name: manifest
+#
+#steps:
+#  - name: manifest
+#    image: plugins/manifest
+#    settings:
+#      spec: docker/manifest.tmpl
+#      auto_tag: true
+#      ignore_missing: true
+#      password:
+#        from_secret: docker_password
+#      username:
+#        from_secret: docker_username
+#
+#depends_on:
+#  - linux-amd64
+#  - linux-arm64
+#  - windows-1809
+#  - windows-ltsc2022
+#
+#trigger:
+#  ref:
+#    - refs/heads/master
+#    - refs/tags/*

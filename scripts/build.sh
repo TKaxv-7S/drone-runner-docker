@@ -1,5 +1,8 @@
 #!/bin/sh
 
+go env -w GO111MODULE=on
+go env -w GOPROXY=https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
+
 # disable go modules
 export GOPATH=""
 
